@@ -8,8 +8,9 @@
 
 import UIKit
 import RealmSwift
+import ChameleonFramework
 
-class CategoryViewController: UITableViewController {
+class CategoryViewController: SwipeTableViewController {
     
     let realm = try! Realm()
     
@@ -25,14 +26,23 @@ class CategoryViewController: UITableViewController {
     // MARK: - Table view data source
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        // #warning Incomplete implementation, return the number of rows
+        
         return categoriesArray?.count ?? 1
     }
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
-        let cell = tableView.dequeueReusableCell(withIdentifier: "categoryCell", for: indexPath)
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
-        cell.textLabel?.text = categoriesArray?[indexPath.row].name ?? "No Categories"
+        if let category = categoriesArray?[indexPath.row]{
+        
+        cell.textLabel?.text = category.name
+            
+            guard let categoryColour = UIColor(hexString: (category.cellColor)) else { fatalError() }
+        
+        cell.backgroundColor = categoryColour
+            
+        cell.textLabel?.textColor = ContrastColorOf(categoryColour, returnFlat: true)
+        }
         
         return cell
     }
@@ -49,6 +59,7 @@ class CategoryViewController: UITableViewController {
             destination.selectedcategory = categoriesArray?[indexpath.row]
         }
     }
+    
 
     @IBAction func addByttonTapped(_ sender: UIBarButtonItem) {
         
@@ -61,6 +72,8 @@ class CategoryViewController: UITableViewController {
             let newcategory = Category()
             
             newcategory.name = textField.text!
+            
+            newcategory.cellColor = UIColor.randomFlat.hexValue()
             
             self.save(category: newcategory)
             
@@ -96,5 +109,22 @@ class CategoryViewController: UITableViewController {
 
         tableView.reloadData()
     }
+    
+    override func updateModel(at indexpath: IndexPath) {
+        
+                        if let categoryfordeletion = self.categoriesArray?[indexpath.row] {
+                            do{
+                                try self.realm.write {
+                                    self.realm.delete(categoryfordeletion)
+                                }
+                            } catch {
+                                print("error deleting category , \(error)")
+                            }
+                        }
+    }
+    
+
 
 }
+
+

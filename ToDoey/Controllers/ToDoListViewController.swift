@@ -8,8 +8,9 @@
 
 import UIKit
 import RealmSwift
+ import ChameleonFramework
 
-class ToDoListViewController: UITableViewController {
+class ToDoListViewController: SwipeTableViewController {
     
     @IBOutlet weak var searchBar: UISearchBar!
     
@@ -28,10 +29,46 @@ class ToDoListViewController: UITableViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        
+        title = selectedcategory!.name
+
+        guard let colourhex = selectedcategory?.cellColor else { fatalError() }
+        
+        updateNAveBar(withHexCode: colourhex)
+
+            }
+    
+    override func viewWillDisappear(_ animated: Bool) {
         
         
+        updateNAveBar(withHexCode: "1D9BF6")
+
+    }
+    
+    //MARK: - Nav Bar Setup Methods
+    
+    func updateNAveBar( withHexCode colourHexCode: String){
         
-        // Do any additional setup after loading the view.
+        
+        guard let navBar =  (navigationController?.navigationBar)  else {
+            fatalError("navigationvontroller does not exist")
+        }
+        
+        guard let navBarColour = UIColor(hexString: colourHexCode) else { fatalError() }
+        
+        navBar.barTintColor  = navBarColour
+        
+        navBar.tintColor = ContrastColorOf(navBarColour, returnFlat: true)
+        
+        searchBar.barTintColor = ContrastColorOf(navBarColour, returnFlat: true)
+        
+        navBar.largeTitleTextAttributes = [NSAttributedString.Key.foregroundColor : ContrastColorOf(navBarColour, returnFlat: true)]
+        
+        searchBar.barTintColor = navBarColour
     }
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -40,12 +77,18 @@ class ToDoListViewController: UITableViewController {
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
-        let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoListItemCell", for: indexPath)
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
         if let item = todoItems?[indexPath.row] {
             
             cell.textLabel?.text = item.title
             
+            if let color = UIColor(hexString: selectedcategory!.cellColor)?.darken(byPercentage: CGFloat(indexPath.row) / CGFloat(todoItems!.count)) {
+            
+            cell.backgroundColor = color
+                
+            cell.textLabel?.textColor = ContrastColorOf(color, returnFlat: true)
+        }
             cell.accessoryType = item.done ? .checkmark : .none
  
         }
@@ -54,8 +97,6 @@ class ToDoListViewController: UITableViewController {
         }
         
         
-        
-
         return cell
     }
     
@@ -95,6 +136,7 @@ class ToDoListViewController: UITableViewController {
                     let newitem = Item()
                     newitem.title = textfield.text!
                     newitem.dateCreated = Date()
+                    newitem.cellColor = UIColor.randomFlat.hexValue()
                     currentcategory.items.append(newitem)
                 }
                 } catch{
@@ -124,6 +166,19 @@ class ToDoListViewController: UITableViewController {
 //
 //
    }
+    
+    override func updateModel(at indexpath: IndexPath) {
+        
+        if let itemfordeletion = self.todoItems?[indexpath.row] {
+            do{
+                try self.realm.write {
+                    self.realm.delete(itemfordeletion)
+                }
+            } catch {
+                print("error deleting item , \(error)")
+            }
+        }
+    }
 
     
 }
@@ -131,10 +186,8 @@ class ToDoListViewController: UITableViewController {
 extension ToDoListViewController:UISearchBarDelegate {
 
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
-        
-        //todoItems = todoItems?.filter("title CONTAINS[cd] %@", searchBar.text!)
        
-         todoItems = todoItems?.filter("title CONTAINS[cd] %@", searchBar.text!).sorted(byKeyPath: "dateCreated", ascending: false)
+         todoItems = todoItems?.filter("title CONTAINS[cd] %@", searchBar.text!).sorted(byKeyPath: "title", ascending: true)
          tableView.reloadData()
 
     }
